@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Document</title>
+  <style rel="stylesheet" href="style.css"></style>
+  <script src="script.js" defer></script>
+ </head>
+ <body>
+  <h1>My Books</h1>
+  <ul class="book-list"></ul>
+
+  <dialog>
+   <form id="new-book-form">
+    <label for="title-input"> Title:<input id="title-input" /> </label>
+    <label for="author-input"> Author:<input id="author-input" /> </label>
+    <label for="pages-input"> Pages:<input id="pages-input" /> </label>
+    <label for="read-input"> Read?:<input id="read-input" type="checkbox"/> </label>
+    <button type="submit">submit</button>
+   </form>
+   <button id="new-book-modal-close-button" type="close">close</button>
+  </dialog>
+  <button id="new-book-button">New Book</button>
+ </body>
+</html>
