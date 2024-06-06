@@ -7,19 +7,33 @@ function CreatePlayer(name, id) {
 const GameBoard = (() => {
   //   let gameBoard = ["", "", "", "", "", "", "", "", ""];
   let gameBoard = [
-    ["", "", ""],
-    ["", "", ""],
-    ["", "", ""],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
   ];
 
   const getGameBoard = () => gameBoard;
 
   const markCell = (player, row, col) => {
+    // Checks if the selections are out of bounds
+    if (
+      row < 0 ||
+      row >= gameBoard.length ||
+      col < 0 ||
+      col >= gameBoard[row].length
+    ) {
+      console.log("Invalid move! Choose another cell.");
+      return false;
+    }
+
+    // Checks if a cell is already marked
     if (["x", "o"].includes(gameBoard[row][col])) {
-      throw new Error("The cell is already marked!");
+      console.log("Cell was already marked! Choose another cell");
+      return false;
     }
 
     gameBoard[row][col] = player;
+    return true;
   };
 
   const clearBoard = () => {
@@ -49,11 +63,15 @@ function TicTacToe(player1, player2, GameBoard) {
 
   function markCell(rowSelection, collumnSelection) {
     const currentPlayer = checkCurrentPlayer();
-    try {
-      GameBoard.markCell(currentPlayer.id, rowSelection, collumnSelection);
-    } catch (err) {
-      throw Error(err); 
+    const success = GameBoard.markCell(
+      currentPlayer.id,
+      rowSelection,
+      collumnSelection
+    );
+    if (!success) {
+      return false;
     }
+    return true;
   }
 
   const switchPlayerTurn = () => {
@@ -135,23 +153,29 @@ function GameController() {
     askMove();
   }
 
-  const askMove = () => {
+  function logGameBoard() {
     console.log(
       GameBoard.getGameBoard()
         .map((row) => row.join("|"))
         .join("\n")
     );
+  }
+  const askMove = () => {
+    logGameBoard();
     const currentPlayer = game.checkCurrentPlayer();
     const rowSelection = prompt(`${currentPlayer.name} enter the row:`);
     const collumnSelection = prompt("Enter the column");
 
-    try {
-      game.markCell(Number(rowSelection), Number(collumnSelection));
-    } catch (err) {
-      console.log(err);
+    const success = game.markCell(
+      Number(rowSelection),
+      Number(collumnSelection)
+    );
+
+    if (!success) {
       askMove();
     }
 
+    //Runs only if no one has won and more moves can be made.
     if (checkWinState() === false) {
       game.switchPlayerTurn();
       askMove();
@@ -161,17 +185,20 @@ function GameController() {
   const checkWinState = () => {
     const winState = game.checkIsWon();
     if (winState.isDraw) {
+      logGameBoard();
       console.log("The game is a draw!");
     }
 
     if (winState.winner === null && !winState.isDraw) {
-      alert("Next players turn");
+      console.log("Next players turn");
       return false;
     }
 
     if (!winState.isDraw) {
-      alert(`${winState.winner} is the winner!`);
+      logGameBoard();
+      console.log(`${winState.winner.name} is the winner!`);
     }
+
     const playAgain = prompt("Play again? (yes/no)").toLowerCase() === "yes";
     if (playAgain) {
       resetGame();
