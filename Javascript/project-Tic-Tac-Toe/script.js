@@ -5,12 +5,16 @@ function CreatePlayer(name, symbol) {
 
 // GameBoard class
 const GameBoard = (() => {
-  //   let gameBoard = ["", "", "", "", "", "", "", "", ""];
-  let gameBoard = [
-    [0, 0, 0],
-    [0, 0, 0],
-    [0, 0, 0],
-  ];
+  let gameBoard;
+
+  const initializeBoard = () => {
+    // gameBoard = ["", "", "", "", "", "", "", "", ""];
+    gameBoard = [
+      ["", "", ""],
+      ["", "", ""],
+      ["", "", ""],
+    ];
+  };
 
   const getGameBoard = () => gameBoard;
 
@@ -37,14 +41,10 @@ const GameBoard = (() => {
   };
 
   const clearBoard = () => {
-    // gameBoard = ["", "", "", "", "", "", "", "", ""];
-    gameBoard = [
-      ["", "", ""],
-      ["", "", ""],
-      ["", "", ""],
-    ];
+    initializeBoard();
   };
 
+  initializeBoard();
   return {
     getGameBoard,
     markCell,
@@ -56,6 +56,7 @@ const GameBoard = (() => {
 function TicTacToe(player1, player2, gameBoard) {
   let isPlayer1Turn = true;
   let currentPlayer;
+  let isGameEnded = false;
 
   const checkCurrentPlayer = () => {
     return (currentPlayer = isPlayer1Turn ? player1 : player2);
@@ -63,11 +64,17 @@ function TicTacToe(player1, player2, gameBoard) {
 
   function markCell(row, col) {
     const currentPlayer = checkCurrentPlayer();
-    const success = gameBoard.markCell(currentPlayer.symbol, row, col);
-    if (!success) {
-      return false;
+    if (!isGameEnded) {
+      const isSuccess = gameBoard.markCell(currentPlayer.symbol, row, col);
+
+      if (isSuccess) {
+        switchPlayerTurn();
+      }
+
+      return [isSuccess, currentPlayer.symbol];
     }
-    return true;
+
+    return [(isSuccess = false)];
   }
 
   const switchPlayerTurn = () => {
@@ -75,6 +82,7 @@ function TicTacToe(player1, player2, gameBoard) {
   };
 
   const resetGameState = () => {
+		isGameEnded = !isGameEnded
     gameBoard.clearBoard();
   };
   // prettier-ignore
@@ -100,6 +108,7 @@ function TicTacToe(player1, player2, gameBoard) {
       .flat()
       .every((cell) => cell === "x" || cell === "o");
     if (isDraw) {
+      isGameEnded = true;
       return { winner: null, isDraw };
     }
 
@@ -110,6 +119,7 @@ function TicTacToe(player1, player2, gameBoard) {
             gameBoard.getGameBoard()[row][col] === currentPlayer.symbol
         )
       ) {
+        isGameEnded = true;
         return { winner: currentPlayer, isDraw: false };
       }
     }
@@ -126,7 +136,7 @@ function TicTacToe(player1, player2, gameBoard) {
 }
 
 //Control the flow of the game
-function GameController(createPlayer, gameBoard) {
+function GameController(createPlayer, gameBoard, gameLogic) {
   // let player1;
   // let player2;
   // let game;
@@ -148,26 +158,12 @@ function GameController(createPlayer, gameBoard) {
 
   function startGame() {
     // createPlayers();
-    game = TicTacToe(player1, player2, gameBoard);
-  }
-
-  function logGameBoard() {
-    console.log(
-      gameBoard
-        .getGameBoard()
-        .map((row) => row.join("|"))
-        .join("\n")
-    );
+    game = gameLogic(player1, player2, gameBoard);
   }
 
   const makeMove = (row, col) => {
-    const success = game.markCell(row, col);
-
-    if (!success) {
-      return false;
-    }
-    game.switchPlayerTurn();
-    return gameBoard.getGameBoard();
+    const result = game.markCell(row, col);
+    return result;
   };
 
   const checkWinState = () => {
@@ -209,35 +205,65 @@ function UIController(gameController) {
 
     for (let row = 0; row < 3; row++) {
       for (let col = 0; col < 3; col++) {
-        const cell = document.createElement("div");
-        cell.classList.add("cell");
-        cell.setAttribute("data-row", row);
-        cell.setAttribute("data-col", col);
-
-        cell.addEventListener("click", () => {
-          const success = gameController.makeMove(row, col);
-          if (success) {
-            refreshBoard(success);
-            const winState = gameController.checkWinState();
-
-            if (!winState) {
-              return;
-            }
-
-            if (winState.winner || winState.isDraw) {
-              handleGameEnd(winState);
-            }
-          }
-        });
+        const cell = createCell(row, col);
         boardContainer.appendChild(cell);
       }
     }
   };
 
+  function createCell(row, col) {
+    const cell = document.createElement("div");
+    cell.classList.add("cell");
+    cell.setAttribute("data-row", row);
+    cell.setAttribute("data-col", col);
+
+    cell.addEventListener("click", () => {
+      const [success, currentPlayerSymbol] = gameController.makeMove(row, col);
+      if (success) {
+        updateCell(row, col, currentPlayerSymbol);
+
+        const winState = gameController.checkWinState();
+
+        if (!winState) {
+          return;
+        }
+
+        if (winState.winner || winState.isDraw) {
+          handleGameEnd(winState);
+        }
+      }
+
+      return;
+    });
+    return cell;
+  }
+
+  const handleGameEnd = (winState) => {
+    if (winState.isDraw) {
+      winnerMessage.textContent = "The game is a draw!";
+    } else {
+      winnerMessage.textContent = `${winState.winner.name} is the winner!`;
+    }
+    showPlayAgainButton();
+  };
+
+  const updateCell = (row, col, value) => {
+    const cell = document.querySelector(
+      `.cell[data-row='${row}'][data-col='${col}']`
+    );
+    cell.textContent = value;
+  };
+
   playAgainButton.addEventListener("click", () => {
     playAgain();
     hidePlayAgainButton();
+    winnerMessage.textContent = "";
   });
+
+  function playAgain() {
+    gameController.resetGame();
+    generateBoardHtml();
+  }
 
   function hidePlayAgainButton() {
     playAgainButton.style.display = "none";
@@ -247,44 +273,16 @@ function UIController(gameController) {
     playAgainButton.style.display = "block";
   }
 
-  const refreshBoard = (gameBoard) => {
-    const cells = document.querySelectorAll(".cell");
-    cells.forEach((cell) => {
-      const row = cell.getAttribute("data-row");
-      const col = cell.getAttribute("data-col");
-
-      if (gameBoard[row][col] === 0) {
-        console.log(gameBoard[row][col]);
-        cell.textContent = "";
-      } else {
-        cell.textContent = gameBoard[row][col];
-      }
-    });
-  };
-
-  const handleGameEnd = (winState) => {
-    if (winState.isDraw) {
-      winnerMessage.textContent = "The game is a drawer!";
-    } else {
-      winnerMessage.textContent = `${winState.winner.name} is the winner!`;
-    }
-    showPlayAgainButton();
-  };
-
-  function playAgain() {
-    gameController.resetGame();
-    generateBoardHtml();
-  }
-
   return {
     generateBoardHtml,
   };
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  const gameController = GameController(CreatePlayer, GameBoard);
+  const gameController = GameController(CreatePlayer, GameBoard, TicTacToe);
   const uiController = UIController(gameController);
   uiController.generateBoardHtml();
+
   const startGameButton = document.getElementById("start-game-btn");
   startGameButton.addEventListener("click", () => {
     gameController.startGame();
