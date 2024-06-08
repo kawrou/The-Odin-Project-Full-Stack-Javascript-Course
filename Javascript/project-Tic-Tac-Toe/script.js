@@ -53,17 +53,9 @@ const GameBoard = (() => {
 })();
 
 //TicTacToe Logic
-function TicTacToe(player1, player2, gameBoard) {
-  let isPlayer1Turn = true;
-  let currentPlayer;
-  let isGameEnded = false;
-
-  const checkCurrentPlayer = () => {
-    return (currentPlayer = isPlayer1Turn ? player1 : player2);
-  };
-
-  function markCell(row, col) {
-    const currentPlayer = checkCurrentPlayer();
+function TicTacToe(gameBoard) {
+  function markCell(currentPlayer, row, col) {
+    // const currentPlayer = checkCurrentPlayer();
     if (!isGameEnded) {
       const isSuccess = gameBoard.markCell(currentPlayer.symbol, row, col);
 
@@ -77,12 +69,7 @@ function TicTacToe(player1, player2, gameBoard) {
     return [(isSuccess = false)];
   }
 
-  const switchPlayerTurn = () => {
-    isPlayer1Turn = !isPlayer1Turn;
-  };
-
   const resetGameState = () => {
-		isGameEnded = !isGameEnded
     gameBoard.clearBoard();
   };
   // prettier-ignore
@@ -152,20 +139,55 @@ function GameController(createPlayer, gameBoard, gameLogic) {
   const player2 = createPlayer("player2", "o");
   let game;
 
-  const resetGame = () => {
-    game.resetGameState();
-  };
+  // let isPlayer1Turn = true;
+  let currentPlayer = player1;
+  let isGameEnded = false;
 
   function startGame() {
     // createPlayers();
     game = gameLogic(player1, player2, gameBoard);
+    // Maybe need to return current player to update UI?
   }
 
-  const makeMove = (row, col) => {
-    const result = game.markCell(row, col);
-    return result;
+  const resetGame = () => {
+    isGameEnded = !isGameEnded;
+    game.resetGameState();
   };
 
+  // The handler should make the move and get back the result of the move
+  // which updates the game state and returns the updates values for the UI.
+  const makeMove = (row, col) => {
+    const result = game.markCell(currentPlayer, row, col);
+
+    //Check the values in result for updating the game state
+    //If it is a draw, a win, or nothing.
+    //Then handle the appropriate logic.
+		//Maybe the logic is the same as checkWinState() below and can be reused?
+
+    // result = {winner: Player, isDraw: bool, error: string};
+
+    // if (error){ return error message and game state isn't updated}
+
+    //  switchPlayerTurn(); 
+
+    // if (winner){ update isGameEnded, update player's score, return won player object}
+    // if (draw) { update isGameEnded, return isDraw: true};
+
+    //  return something to indicate that it's the next players turn
+
+  };
+
+  // const checkCurrentPlayer = () => {
+  //   return (currentPlayer = isPlayer1Turn ? player1 : player2);
+  // };
+
+  const switchPlayerTurn = () => {
+  //   isPlayer1Turn = !isPlayer1Turn;
+		currentPlayer = isPlayer1Turn ? player1 : player2; 
+		return 
+  };
+
+  //Maybe don't need this here. This class is only interested in updating the win state.
   const checkWinState = () => {
     const winState = game.checkIsWon();
 
@@ -197,6 +219,11 @@ function UIController(gameController) {
   const boardContainer = document.getElementById("board-container");
   const winnerMessage = document.getElementById("winner-message");
   const playAgainButton = document.getElementById("play-again-btn");
+
+  const player1Name = document.getElementById("player1-name");
+  const player1Score = document.getElementById("player1-score");
+  const player2Name = document.getElementById("player2-name");
+  const player2Score = document.getElementById("player2-score");
 
   const generateBoardHtml = () => {
     while (boardContainer.firstChild) {
