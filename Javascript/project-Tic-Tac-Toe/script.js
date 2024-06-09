@@ -1,6 +1,15 @@
 // CreatePlayer Factory Function
 function CreatePlayer(name, symbol) {
-  return { name, symbol };
+  let score = 0;
+
+  function addScore() {
+    score += 1;
+  }
+
+  function getScore() {
+    return score;
+  }
+  return { name, symbol, addScore, getScore };
 }
 
 // GameBoard class
@@ -8,6 +17,7 @@ const GameBoard = (() => {
   let gameBoard;
 
   const initializeBoard = () => {
+    console.log("initialize board was called");
     // gameBoard = ["", "", "", "", "", "", "", "", ""];
     gameBoard = [
       ["", "", ""],
@@ -72,10 +82,6 @@ function TicTacToe(gameBoard) {
     const result = winConditionResult;
     return result;
   }
-
-  const resetGameState = () => {
-    gameBoard.clearBoard();
-  };
   // prettier-ignore
   const winCombinations = [
       // Rows
@@ -94,15 +100,16 @@ function TicTacToe(gameBoard) {
       ];
 
   function checkWinCondition(currentPlayer) {
-    const currentPlayerName = currentPlayer.name;
-    const currentPlayerSymbol = currentPlayer.symbol;
-
     const isDraw = gameBoard
       .getGameBoard()
       .flat()
       .every((cell) => cell === "x" || cell === "o");
     if (isDraw) {
-      return { winner: null, isDraw, symbol: currentPlayerSymbol };
+      return {
+        winner: null,
+        isDraw,
+        symbol: currentPlayer.symbol,
+      };
     }
 
     for (const combination of winCombinations) {
@@ -113,18 +120,21 @@ function TicTacToe(gameBoard) {
         )
       ) {
         return {
-          winner: currentPlayerName,
+          winner: currentPlayer.name,
           isDraw: false,
-          symbol: currentPlayerSymbol,
+          symbol: currentPlayer.symbol,
         };
       }
     }
 
-    return { winner: null, isDraw: false, symbol: currentPlayerSymbol };
+    return {
+      winner: null,
+      isDraw: false,
+      symbol: currentPlayer.symbol,
+    };
   }
   return {
     markCell,
-    resetGameState,
   };
 }
 
@@ -145,48 +155,27 @@ function GameController(createPlayer, gameBoard, gameLogic) {
   const player2 = createPlayer("player2", "o");
   let game;
 
-  // let isPlayer1Turn = true;
   let currentPlayer = player1;
   let isGameEnded = false;
 
   function startGame() {
     // createPlayers();
     game = gameLogic(gameBoard);
-    console.log(`${currentPlayer.name}'s turn`);
-    // Maybe need to return current player to update UI?
+    return currentPlayer.name;
   }
 
   const resetGame = () => {
     isGameEnded = !isGameEnded;
-    game.resetGameState();
+    gameBoard.clearBoard();
+    return currentPlayer.name;
   };
 
-  // The handler should make the move and get back the result of the move
-  // which updates the game state and returns the updates values for the UI.
   const makeMove = (row, col) => {
     if (!isGameEnded) {
       const response = game.markCell(currentPlayer, row, col);
       console.log(response);
       checkWinState(response);
       return response;
-      // const winState = checkWinState(result);
-      // return winState;
-
-      //Check the values in result for updating the game state
-      //If it is a draw, a win, or nothing.
-      //Then handle the appropriate logic.
-      //Maybe the logic is the same as checkWinState() below and can be reused?
-
-      // result = {winner: Player, isDraw: bool, error: string};
-
-      // if (error){ return error message and game state isn't updated}
-
-      //  switchPlayerTurn();
-
-      // if (winner){ update isGameEnded, update player's score, return won player object}
-      // if (draw) { update isGameEnded, return isDraw: true};
-
-      //  return something to indicate that it's the next players turn
     }
     return;
   };
@@ -196,7 +185,6 @@ function GameController(createPlayer, gameBoard, gameLogic) {
     return;
   };
 
-  //Maybe don't need this here. This class is only interested in updating the win state.
   const checkWinState = (result) => {
     if (result.error) {
       console.log(result.error);
@@ -205,40 +193,49 @@ function GameController(createPlayer, gameBoard, gameLogic) {
 
     if (result.isDraw) {
       console.log("The game is a draw!");
-      isGameEnded = true;
-      return;
-    }
-
-    if (result.winner === null && !result.isDraw) {
-      console.log("Next players turn");
-      switchPlayerTurn();
-      return;
-    }
-
-    if (!result.isDraw) {
+    } else if (result.winner === null) {
+      console.log("Next player's turn");
+    } else {
       console.log(`${result.winner} is the winner!`);
-      isGameEnded = true;
-      return;
+      currentPlayer.addScore();
     }
+
+    isGameEnded = result.isDraw || result.winner !== null;
+    switchPlayerTurn();
+  };
+
+  const getScore = () => {
+    return [player1.getScore(), player2.getScore()];
   };
 
   return {
     startGame,
     resetGame,
     makeMove,
-    checkWinState,
+    getScore,
   };
 }
 
 function UIController(gameController) {
   const boardContainer = document.getElementById("board-container");
   const message = document.getElementById("winner-message");
+  const startGameButton = document.getElementById("start-game-btn");
   const playAgainButton = document.getElementById("play-again-btn");
 
   const player1Name = document.getElementById("player1-name");
   const player1Score = document.getElementById("player1-score");
   const player2Name = document.getElementById("player2-name");
   const player2Score = document.getElementById("player2-score");
+
+  player1Name.textContent = "Player 1";
+  player2Name.textContent = "Player 2";
+  player1Score.textContent = "0";
+  player2Score.textContent = "0";
+
+  startGameButton.addEventListener("click", () => {
+    message.textContent = `${gameController.startGame()} starts`;
+    startGameButton.style.display = "none";
+  });
 
   const generateBoardHtml = () => {
     while (boardContainer.firstChild) {
@@ -260,6 +257,7 @@ function UIController(gameController) {
     cell.setAttribute("data-col", col);
 
     cell.addEventListener("click", () => {
+      message.textContent = "";
       const result = gameController.makeMove(row, col);
       if (!result) {
         return;
@@ -288,6 +286,9 @@ function UIController(gameController) {
       message.textContent = "The game is a draw!";
     } else {
       message.textContent = `${result.winner} is the winner!`;
+      const [score1, score2] = gameController.getScore();
+      player1Score.textContent = score1;
+      player2Score.textContent = score2;
     }
     showPlayAgainButton();
   };
@@ -306,8 +307,9 @@ function UIController(gameController) {
   });
 
   function playAgain() {
-    gameController.resetGame();
+    const startingPlayer = gameController.resetGame();
     generateBoardHtml();
+    setTimeout(() => (message.textContent = `${startingPlayer} starts`), 0);
   }
 
   function hidePlayAgainButton() {
@@ -327,10 +329,4 @@ document.addEventListener("DOMContentLoaded", () => {
   const gameController = GameController(CreatePlayer, GameBoard, TicTacToe);
   const uiController = UIController(gameController);
   uiController.generateBoardHtml();
-
-  const startGameButton = document.getElementById("start-game-btn");
-  startGameButton.addEventListener("click", () => {
-    gameController.startGame();
-    startGameButton.style.display = "none";
-  });
 });
