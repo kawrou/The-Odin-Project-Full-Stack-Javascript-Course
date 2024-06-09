@@ -18,8 +18,10 @@ const GameBoard = (() => {
 
   const getGameBoard = () => gameBoard;
 
-  const markCell = (player, row, col) => {
+  const markCell = (currentPlayer, row, col) => {
     // Checks if the selections are out of bounds
+    let response = { success: null, error: null };
+
     if (
       row < 0 ||
       row >= gameBoard.length ||
@@ -27,17 +29,22 @@ const GameBoard = (() => {
       col >= gameBoard[row].length
     ) {
       console.log("Invalid move! Choose another cell.");
-      return false;
+      response.error = "Invalid move! Choose another cell.";
+      response.success = false;
+      return response;
     }
 
     // Checks if a cell is already marked
     if (["x", "o"].includes(gameBoard[row][col])) {
       console.log("Cell was already marked! Choose another cell");
-      return false;
+      response.error = "Cell was already marked! Choose another cell.";
+      response.success = false;
+      return response;
     }
 
-    gameBoard[row][col] = player;
-    return true;
+    gameBoard[row][col] = currentPlayer;
+    response.success = true;
+    return response;
   };
 
   const clearBoard = () => {
@@ -55,18 +62,15 @@ const GameBoard = (() => {
 //TicTacToe Logic
 function TicTacToe(gameBoard) {
   function markCell(currentPlayer, row, col) {
-    // const currentPlayer = checkCurrentPlayer();
-    if (!isGameEnded) {
-      const isSuccess = gameBoard.markCell(currentPlayer.symbol, row, col);
-
-      if (isSuccess) {
-        switchPlayerTurn();
-      }
-
-      return [isSuccess, currentPlayer.symbol];
+    const response = gameBoard.markCell(currentPlayer.symbol, row, col);
+    if (response.error) {
+      return response;
     }
 
-    return [(isSuccess = false)];
+    const winConditionResult = checkWinCondition(currentPlayer);
+
+    const result = winConditionResult;
+    return result;
   }
 
   const resetGameState = () => {
@@ -89,14 +93,16 @@ function TicTacToe(gameBoard) {
       [[0, 2], [1, 1], [2, 0]]
       ];
 
-  function checkIsWon() {
+  function checkWinCondition(currentPlayer) {
+    const currentPlayerName = currentPlayer.name;
+    const currentPlayerSymbol = currentPlayer.symbol;
+
     const isDraw = gameBoard
       .getGameBoard()
       .flat()
       .every((cell) => cell === "x" || cell === "o");
     if (isDraw) {
-      isGameEnded = true;
-      return { winner: null, isDraw };
+      return { winner: null, isDraw, symbol: currentPlayerSymbol };
     }
 
     for (const combination of winCombinations) {
@@ -106,18 +112,18 @@ function TicTacToe(gameBoard) {
             gameBoard.getGameBoard()[row][col] === currentPlayer.symbol
         )
       ) {
-        isGameEnded = true;
-        return { winner: currentPlayer, isDraw: false };
+        return {
+          winner: currentPlayerName,
+          isDraw: false,
+          symbol: currentPlayerSymbol,
+        };
       }
     }
 
-    return { winner: null, isDraw: false };
+    return { winner: null, isDraw: false, symbol: currentPlayerSymbol };
   }
   return {
-    checkCurrentPlayer,
     markCell,
-    switchPlayerTurn,
-    checkIsWon,
     resetGameState,
   };
 }
@@ -145,7 +151,8 @@ function GameController(createPlayer, gameBoard, gameLogic) {
 
   function startGame() {
     // createPlayers();
-    game = gameLogic(player1, player2, gameBoard);
+    game = gameLogic(gameBoard);
+    console.log(`${currentPlayer.name}'s turn`);
     // Maybe need to return current player to update UI?
   }
 
@@ -157,53 +164,61 @@ function GameController(createPlayer, gameBoard, gameLogic) {
   // The handler should make the move and get back the result of the move
   // which updates the game state and returns the updates values for the UI.
   const makeMove = (row, col) => {
-    const result = game.markCell(currentPlayer, row, col);
+    if (!isGameEnded) {
+      const response = game.markCell(currentPlayer, row, col);
+      console.log(response);
+      checkWinState(response);
+      return response;
+      // const winState = checkWinState(result);
+      // return winState;
 
-    //Check the values in result for updating the game state
-    //If it is a draw, a win, or nothing.
-    //Then handle the appropriate logic.
-		//Maybe the logic is the same as checkWinState() below and can be reused?
+      //Check the values in result for updating the game state
+      //If it is a draw, a win, or nothing.
+      //Then handle the appropriate logic.
+      //Maybe the logic is the same as checkWinState() below and can be reused?
 
-    // result = {winner: Player, isDraw: bool, error: string};
+      // result = {winner: Player, isDraw: bool, error: string};
 
-    // if (error){ return error message and game state isn't updated}
+      // if (error){ return error message and game state isn't updated}
 
-    //  switchPlayerTurn(); 
+      //  switchPlayerTurn();
 
-    // if (winner){ update isGameEnded, update player's score, return won player object}
-    // if (draw) { update isGameEnded, return isDraw: true};
+      // if (winner){ update isGameEnded, update player's score, return won player object}
+      // if (draw) { update isGameEnded, return isDraw: true};
 
-    //  return something to indicate that it's the next players turn
-
+      //  return something to indicate that it's the next players turn
+    }
+    return;
   };
 
-  // const checkCurrentPlayer = () => {
-  //   return (currentPlayer = isPlayer1Turn ? player1 : player2);
-  // };
-
   const switchPlayerTurn = () => {
-  //   isPlayer1Turn = !isPlayer1Turn;
-		currentPlayer = isPlayer1Turn ? player1 : player2; 
-		return 
+    currentPlayer = currentPlayer === player1 ? player2 : player1;
+    return;
   };
 
   //Maybe don't need this here. This class is only interested in updating the win state.
-  const checkWinState = () => {
-    const winState = game.checkIsWon();
+  const checkWinState = (result) => {
+    if (result.error) {
+      console.log(result.error);
+      return;
+    }
 
-    if (winState.isDraw) {
+    if (result.isDraw) {
       console.log("The game is a draw!");
-      return { isDraw: true, winner: null };
+      isGameEnded = true;
+      return;
     }
 
-    if (winState.winner === null && !winState.isDraw) {
+    if (result.winner === null && !result.isDraw) {
       console.log("Next players turn");
-      return null;
+      switchPlayerTurn();
+      return;
     }
 
-    if (!winState.isDraw) {
-      console.log(`${winState.winner.name} is the winner!`);
-      return { isDraw: false, winner: winState.winner };
+    if (!result.isDraw) {
+      console.log(`${result.winner} is the winner!`);
+      isGameEnded = true;
+      return;
     }
   };
 
@@ -217,7 +232,7 @@ function GameController(createPlayer, gameBoard, gameLogic) {
 
 function UIController(gameController) {
   const boardContainer = document.getElementById("board-container");
-  const winnerMessage = document.getElementById("winner-message");
+  const message = document.getElementById("winner-message");
   const playAgainButton = document.getElementById("play-again-btn");
 
   const player1Name = document.getElementById("player1-name");
@@ -245,31 +260,34 @@ function UIController(gameController) {
     cell.setAttribute("data-col", col);
 
     cell.addEventListener("click", () => {
-      const [success, currentPlayerSymbol] = gameController.makeMove(row, col);
-      if (success) {
-        updateCell(row, col, currentPlayerSymbol);
-
-        const winState = gameController.checkWinState();
-
-        if (!winState) {
-          return;
-        }
-
-        if (winState.winner || winState.isDraw) {
-          handleGameEnd(winState);
-        }
+      const result = gameController.makeMove(row, col);
+      if (!result) {
+        return;
+      }
+      if (result.error) {
+        handleErrorMessage(result.error);
+        return;
       }
 
+      updateCell(row, col, result.symbol);
+
+      if (result.winner || result.isDraw) {
+        handleGameEnd(result);
+      }
       return;
     });
     return cell;
   }
 
-  const handleGameEnd = (winState) => {
-    if (winState.isDraw) {
-      winnerMessage.textContent = "The game is a draw!";
+  const handleErrorMessage = (error) => {
+    message.textContent = error;
+  };
+
+  const handleGameEnd = (result) => {
+    if (result.isDraw) {
+      message.textContent = "The game is a draw!";
     } else {
-      winnerMessage.textContent = `${winState.winner.name} is the winner!`;
+      message.textContent = `${result.winner} is the winner!`;
     }
     showPlayAgainButton();
   };
@@ -284,7 +302,7 @@ function UIController(gameController) {
   playAgainButton.addEventListener("click", () => {
     playAgain();
     hidePlayAgainButton();
-    winnerMessage.textContent = "";
+    message.textContent = "";
   });
 
   function playAgain() {
